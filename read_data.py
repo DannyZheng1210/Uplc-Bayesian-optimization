@@ -1,7 +1,7 @@
 import rainbow as rb
-
-datadir = rb.read("phenyl_LHS5.raw")
-for f in datadir.datafiles:
-    if f.detector == "UV":
-        f.export_csv("uv_data.csv")
-        breaki
+def read_chromatogram(chromatogram_rawdata, chromatogram_csv="./"):
+    datadir = rb.read(chromatogram_rawdata)
+    for f in datadir.datafiles:
+        if f.detector == "UV":
+            f.export_csv(f"{chromatogram_csv}/uv_data.csv")
+            break
