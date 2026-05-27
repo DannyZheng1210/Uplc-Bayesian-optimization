@@ -356,10 +356,10 @@ RequiredPointsPerPeak,12"""
 def generate_all_methods(isocratic_time, 
                          gradient_time, 
                          initial_org, 
+                         output_dir,
                          max_org=100.0, 
                          flow=0.300, 
-                         iteration=16, 
-                         output_dir=".",
+                         iteration=20, 
                          hold_at_max=1.0, 
                          ramp_down=0.5, 
                          re_equil=1.0):
