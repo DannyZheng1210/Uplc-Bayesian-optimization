@@ -9,8 +9,8 @@ flow_rate = 0.300                      # mL/min: global flow rate
 initial_organic_concentration = 30.0  # %B: initial organic solvent concentration
 max_organic_concentration = 100.0     # %B: maximum organic solvent concentration
 
-isocratic_time = 3.0                  # min: initial isocratic hold time
-gradient_time = 7.0                   # min: gradient ramp time to maximum concentration
+isocratic_time = 1.0                  # min: initial isocratic hold time
+gradient_time = 1.0                   # min: gradient ramp time to maximum concentration
 iteration_n = 16                      # unified output numbering for batch generation
 
 hold_at_max_time = 1.0    # min: hold time at maximum organic concentration
@@ -305,33 +305,111 @@ def generate_ftn(base_name, run_time_str):
 
 
 # ==============================================================================
-#  6. Generate EXP file
+# #  6. Generate EXP file
 # ==============================================================================
 def generate_exp(base_name, run_time_str, flow):
     """Generate MS acquisition method file (.exp)."""
+
+    # Safe raw strings to prevent Windows path 'unicodeescape' errors (\U, \u, etc.)
+    cal_path = r"C:\MassLynx\IntelliStart\Results\Unit Mass Resolution\Calibration_20240719_1.cal"
+    inst_path = r"c:\masslynx\default.pro\acqudb\default.ipr"
 
     content = f"""GENERAL INFORMATION
 ExperimentName,Default Experiment
 ExperimentCreationTime,Thu 23 Apr 2026 13:54:39
 VersionNumber,1.0
 ExperimentDuration,{run_time_str}
+AnalogChannelDescription1,Channel 1,Disabled
+AnalogChannelDescription2,Channel 2,Disabled
+AnalogChannelDescription3,Channel 3,Disabled
+AnalogChannelDescription4,Channel 4,Disabled
+AnalogChannelDescription5,Channel 5,Disabled
+AnalogChannelDescription6,Channel 6,Disabled
+AnalogChannelDescription7,Channel 7,Disabled
+AnalogChannelDescription8,Channel 8,Disabled
+MUXAnalogOffset1,0.0000
+MUXAnalogOffset2,0.0000
+MUXAnalogOffset3,0.0000
+MUXAnalogOffset4,0.0000
+MUXAnalogOffset5,0.0000
+MUXAnalogOffset6,0.0000
+MUXAnalogOffset7,0.0000
+MUXAnalogOffset8,0.0000
+ExperimentCalibrationFilename,{cal_path},Enabled
+ExperimentNegCalibrationFilename,,Disabled,Disabled,Disabled,Disabled,Disabled,Disabled,Disabled,Disabled,Disabled,Disabled,Disabled,Disabled,Disabled,Disabled,Disabled,Disabled,Disabled,Disabl ,Disabled
+SolventDelayStart1,0.0000
+SolventDelayEnd1,0.0000
+SolventDelayTemp1,0.0000
+SolventDelayStart2,0.0000
+SolventDelayEnd2,0.0000
+SolventDelayTemp2,0.0000
+SolventDelayStart3,0.0000
+SolventDelayEnd3,0.0000
+SolventDelayTemp3,0.0000
+SolventDelayStart4,0.0000
+SolventDelayEnd4,0.0000
+SolventDelayTemp4,0.0000
+SolventDelayDivertValveEnabled,0
+ReferenceFrequency,0
+ReferenceConeVoltage,35
+ReferenceScanTime,0
+ReferenceCentroidAverage,1
+ReferenceSetMass,0
+ReferenceCollisionEnergy,0
+PositivePolarity,1
+WMode,0
+DREExtended,0
+ExperimentExtension,TIMED_EVENTS_EXTENSION
+ExperimentExtensionData,No Change,No Change,No Change,No Change,No Change,LC,5,No Action,No Action,20,1,0
+NumberOfFunctions,1
+FunctionTypes,MS Scan
 
 FUNCTION 1
 FunctionType,MS Scan
 FunctionDataFormat,Centroid
 FunctionIonMode,ES Mode
 FunctionPolarity,Positive
-
+FunctionInstrumentConditions,{inst_path}
 FunctionStartMass,100
 FunctionEndMass,500
-
 FunctionStartTime(min),0
 FunctionEndTime(min),{run_time_str}
-
 FunctionScanTime(sec),1
-
+FunctionInterScanTime(sec),-1
+Scans To Sum,16960
+NumFunctions,1
+Resolution,1000
+PrimaryScanLock,2
+SecondaryScanLock,2
+ThresholdLock,100
+StepLock,0.02
+FunctionOnOffState,1
+PeakDisplayTuneMode,0
+SIRMode,Peak Top
+NumSIRMasses,0
+FastLockOn,1
+UseWMode,0
 ConeVoltage,30
+UseTunePageConeVoltage,0
+UseCVRamp,0
+CVRampStart,20
+CVRampEnd,70
+CVRampStartMass,100
+CVRampEndMass,1000
+UseTuneProbeTemp,0
 ProbeTemp,20
+Gain,1
+PointsPerAMU,32
+StoreZeros,false
+EnableMRMSmooth,0
+MRMSmoothWidth,3
+MRMSmoothRepeats,2
+FractionLowMassIndex,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+FractionHighMassIndex,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+FractionMultiplier,1
+FractionMode,0
+PointsPerPeakWidth,4.0000
+RequiredPointsPerPeak,12
 """
 
     with open(f"{base_name}.exp", "w", encoding="utf-8", newline="\r\n") as f:
@@ -528,20 +606,40 @@ def generate_csv_conf(
     )
 
 
-# ==============================================================================
-#  9. Script entry point
-# ==============================================================================
-if __name__ == "__main__":
+# # ==============================================================================
+# #  9. Script entry point
+# # ==============================================================================
+# if __name__ == "__main__":
 
-    generate_all_methods(
-        isocratic_time=isocratic_time,
-        gradient_time=gradient_time,
-        initial_org=initial_organic_concentration,
-        output_dir="your_output_dir",
-        conf_files_name="my_method",
-        max_org=max_organic_concentration,
-        flow=flow_rate,
-        hold_at_max=hold_at_max_time,
-        ramp_down=ramp_down_time,
-        re_equil=re_equil_time,
-    )
+#     confs_floder = r"D:\automation_test.PRO\ACQUDB" 
+#     confs_name = "test_confs" 
+    
+#     generate_all_methods(
+#         isocratic_time=isocratic_time,
+#         gradient_time=gradient_time,
+#         initial_org=initial_organic_concentration,
+#         output_dir=confs_floder,
+#         conf_files_name=confs_name,
+#         max_org=max_organic_concentration,
+#         flow=flow_rate,
+#         hold_at_max=hold_at_max_time,
+#         ramp_down=ramp_down_time,
+#         re_equil=re_equil_time,
+#     )
+    
+#     # ======= 修改这里 =======
+#     file_name = confs_name  # 将文件名设为 "test_confs" 而不是整个文件夹路径
+#     # =======================
+    
+#     sample_location = "2:48"
+#     csv_control_folder = r"D:\autolynx"
+
+#     generate_csv_conf(
+#             file_name,
+#             sample_location,
+#             conf_names=confs_name,
+#             output_dir = csv_control_folder,
+#             index=1,
+#             inj_vol=5,
+#             ms_tune_file="Instrument",
+#         )
