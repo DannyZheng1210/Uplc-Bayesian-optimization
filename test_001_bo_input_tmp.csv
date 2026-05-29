@@ -1,0 +1,4 @@
+iteration,algorithm,organic_concentration,isocratic_time,gradient_time,number_of_peak,critical_resolution,last_peak_elutes
+1,LHS1,12.2,0.2,1.6,2.0,0.7927,3.8
+2,LHS2,43.2,0.5,0.5,2.0,0.5368,1.3
+3,BO1,44.25,0.65,1.17,2.0,0.5379,1.3
