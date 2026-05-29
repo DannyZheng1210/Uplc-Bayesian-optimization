@@ -82,7 +82,7 @@ def analyze_chromatogram(
 
     # ── 5. 最小分离度（忽略 NaN）────────────────────────────────────
     valid_rs = [r for r in resolution_values if not np.isnan(r)]
-    min_resolution = float(min(valid_rs)) if valid_rs else float('nan')
+    min_resolution = float(min(valid_rs)) if valid_rs else 0.0
     print(f"\n最小分离度 Rs_min = {min_resolution:.3f}")
 
     # ── 6. 导出 CSV ──────────────────────────────────────────────────
