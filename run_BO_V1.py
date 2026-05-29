@@ -31,21 +31,21 @@ logger = logging.getLogger(__name__)
 # ── 实验变量 ───────────────────────────────────────────────────────────
 VARIABLE_NAMES = ["organic_concentration", "isocratic_time", "gradient_time"]
 LOWER_BOUNDS   = [5,  0, 0]
-UPPER_BOUNDS   = [60, 5, 5]
+UPPER_BOUNDS   = [60, 1, 1]
 
 # ── 实验轮次 ───────────────────────────────────────────────────────────
 N_INITIAL       = 5     # LHS 初始实验数量
-N_BO_ITERATIONS = 10    # 贝叶斯优化迭代次数
+N_BO_ITERATIONS = 2    # 贝叶斯优化迭代次数
 
 # ── UPLC 硬件参数 ──────────────────────────────────────────────────────
 SAMPLE_LOCATION = "2:48"
 WAVELENGTH      = 254
 
 # ── 文件夹路径（按实际情况修改）───────────────────────────────────────
-CONF_OUTPUT_DIR  = "./"              # UPLC 4个配置文件输出目录
-CSV_CONTROL_DIR  = "./"              # 控制 CSV 生成目录
-PROCESSED_DIR    = "D:/Processed"    # UPLC 完成标志目录
-RAW_DATA_DIR     = "D:/RawData"      # UPLC raw 数据文件目录
+CONF_OUTPUT_DIR  = r"D:\automation_test.PRO\ACQUDB"              # UPLC 4个配置文件输出目录
+CSV_CONTROL_DIR  = r"D:\autolynx"              # 控制 CSV 生成目录
+PROCESSED_DIR    = r"D:\autolynx\Processed"    # UPLC 完成标志目录
+RAW_DATA_DIR     = r"D:\automation_test.PRO\Data"      # UPLC raw 数据文件目录
 CHROM_CSV_DIR    = "./"              # 色谱 CSV 输出目录
 PEAKS_CSV_DIR    = "./"              # 峰分析 CSV 输出目录
 
