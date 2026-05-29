@@ -28,7 +28,7 @@ def run_bo_suggest(
     num_experiments : 推荐点数量，默认 1
     output_csv      : 推荐结果保存路径
 
-    Returns
+    Returnsde
     -------
     pd.DataFrame，列为 organic_concentration / isocratic_time / gradient_time
     """

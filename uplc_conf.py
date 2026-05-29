@@ -6,16 +6,17 @@ import csv
 #     (kept as global defaults for direct script execution or importing)
 # ==============================================================================
 flow_rate = 0.300                      # mL/min: global flow rate
-initial_organic_concentration = 30.0  # %B: initial organic solvent concentration
-max_organic_concentration = 100.0     # %B: maximum organic solvent concentration
+initial_org = 30.0                     # %B: initial organic solvent concentration
+max_organic_concentration = 100.0      # %B: maximum organic solvent concentration
 
-isocratic_time = 1.0                  # min: initial isocratic hold time
-gradient_time = 1.0                   # min: gradient ramp time to maximum concentration
-iteration_n = 16                      # unified output numbering for batch generation
+isocratic_time = 3.0                   # min: initial isocratic hold time
+gradient_time = 7.0                    # min: gradient ramp time to maximum concentration
+iteration_n = 16                       # unified output numbering for batch generation
 
-hold_at_max_time = 1.0    # min: hold time at maximum organic concentration
-ramp_down_time = 0.5      # min: ramp back to initial concentration
-re_equil_time = 1.0       # min: re-equilibration time
+hold_at_max_time = 1.0     # min: hold time at maximum organic concentration
+ramp_down_time = 0.5       # min: ramp back to initial concentration
+re_equil_time = 1.0        # min: re-equilibration time
+re_equil_org = 5.0         # %B: organic solvent concentration during re-equilibration
 
 
 # ==============================================================================
@@ -42,23 +43,7 @@ def format_qsm_row(time_val, flow, a, b, c, d, curve):
 # ==============================================================================
 #  3. Generate QSM file
 # ==============================================================================
-def generate_qsm(
-    base_name,
-    run_time_str,
-    flow,
-    init_a,
-    init_b,
-    max_a,
-    max_b,
-    post_a,
-    post_b,
-    t1,
-    t2,
-    t3,
-    t4,
-    t5,
-    qsm_rows,
-):
+def generate_qsm(base_name, run_time_str, flow, qsm_rows):
     """Generate LC gradient method file (.qsm)."""
 
     all_blocks = [format_qsm_row(*r) for r in qsm_rows]
@@ -305,12 +290,11 @@ def generate_ftn(base_name, run_time_str):
 
 
 # ==============================================================================
-# #  6. Generate EXP file
+#  6. Generate EXP file
 # ==============================================================================
 def generate_exp(base_name, run_time_str, flow):
     """Generate MS acquisition method file (.exp)."""
 
-    # Safe raw strings to prevent Windows path 'unicodeescape' errors (\U, \u, etc.)
     cal_path = r"C:\MassLynx\IntelliStart\Results\Unit Mass Resolution\Calibration_20240719_1.cal"
     inst_path = r"c:\masslynx\default.pro\acqudb\default.ipr"
 
@@ -419,17 +403,18 @@ RequiredPointsPerPeak,12
 # ==============================================================================
 #  7. Main coordination function
 # ==============================================================================
-def generate_all_methods(
+def generate_all_confs(
     isocratic_time,
     gradient_time,
     initial_org,
     output_dir,
     conf_files_name,
     max_org=100.0,
-    flow=0.500,
+    flow=0.300,
     hold_at_max=1.0,
     ramp_down=0.5,
     re_equil=1.0,
+    re_equil_org=5.0,
 ):
     """
     Main coordination function.
@@ -451,7 +436,7 @@ def generate_all_methods(
     max_a = round(100.0 - max_org, 1)
     max_b = round(float(max_org), 1)
 
-    post_b = min(5.0, max_org)
+    post_b = round(min(float(re_equil_org), max_org), 1)
     post_a = round(100.0 - post_b, 1)
 
     # --------------------------------------------------------------------------
@@ -487,23 +472,7 @@ def generate_all_methods(
     # --------------------------------------------------------------------------
     # 7.5 Generate all method files
     # --------------------------------------------------------------------------
-    generate_qsm(
-        base_name,
-        run_time_str,
-        flow,
-        init_a,
-        init_b,
-        max_a,
-        max_b,
-        post_a,
-        post_b,
-        t1,
-        t2,
-        t3,
-        t4,
-        t5,
-        qsm_rows,
-    )
+    generate_qsm(base_name, run_time_str, flow, qsm_rows)
 
     generate_tuv(base_name, run_time_str)
 
@@ -567,6 +536,8 @@ def generate_csv_conf(
     Generate a CSV sequence configuration file.
     """
 
+    os.makedirs(output_dir, exist_ok=True)
+
     full_csv_path = os.path.join(output_dir, f"{file_name}.csv")
 
     headers = [
@@ -606,40 +577,21 @@ def generate_csv_conf(
     )
 
 
-# # ==============================================================================
-# #  9. Script entry point
-# # ==============================================================================
-# if __name__ == "__main__":
+# ==============================================================================
+#  9. Script entry point
+# ==============================================================================
+if __name__ == "__main__":
 
-#     confs_floder = r"D:\automation_test.PRO\ACQUDB" 
-#     confs_name = "test_confs" 
-    
-#     generate_all_methods(
-#         isocratic_time=isocratic_time,
-#         gradient_time=gradient_time,
-#         initial_org=initial_organic_concentration,
-#         output_dir=confs_floder,
-#         conf_files_name=confs_name,
-#         max_org=max_organic_concentration,
-#         flow=flow_rate,
-#         hold_at_max=hold_at_max_time,
-#         ramp_down=ramp_down_time,
-#         re_equil=re_equil_time,
-#     )
-    
-#     # ======= 修改这里 =======
-#     file_name = confs_name  # 将文件名设为 "test_confs" 而不是整个文件夹路径
-#     # =======================
-    
-#     sample_location = "2:48"
-#     csv_control_folder = r"D:\autolynx"
-
-#     generate_csv_conf(
-#             file_name,
-#             sample_location,
-#             conf_names=confs_name,
-#             output_dir = csv_control_folder,
-#             index=1,
-#             inj_vol=5,
-#             ms_tune_file="Instrument",
-#         )
+    generate_all_confs(
+        isocratic_time=isocratic_time,
+        gradient_time=gradient_time,
+        initial_org=initial_org,
+        output_dir="your_output_dir",
+        conf_files_name="my_method",
+        max_org=max_organic_concentration,
+        flow=flow_rate,
+        hold_at_max=hold_at_max_time,
+        ramp_down=ramp_down_time,
+        re_equil=re_equil_time,
+        re_equil_org=re_equil_org,
+    )
