@@ -410,7 +410,7 @@ def generate_all_confs(
     output_dir,
     conf_files_name,
     max_org=100.0,
-    flow=0.300,
+    flow=0.500,
     hold_at_max=1.0,
     ramp_down=0.5,
     re_equil=1.0,
