@@ -9,50 +9,50 @@ def analyze_chromatogram(
     output_csv: str = "peaks_summary.csv"
 ) -> dict:
     """
-    分析色谱数据，返回峰统计信息并导出峰摘要 CSV。
+    Analyze chromatogram data, return peak statistics and export peak summary CSV.
 
     Parameters
     ----------
     csv_file : str
-        输入色谱数据的 CSV 文件路径。
+        Input chromatogram CSV file path.
     prominence_threshold : float
-        归一化峰高阈值，默认 0.01。
+        Normalized peak height threshold, default 0.01.
     output_csv : str
-        导出峰摘要 CSV 的文件名，默认 'peaks_summary.csv'。
+        Output peak summary CSV filename, default 'peaks_summary.csv'.
 
     Returns
     -------
     dict with keys:
-        peak_count          : int   — 检测到的峰数量
-        last_retention_time : float — 最后一个峰的保留时间
-        min_resolution      : float — 所有相邻峰中最小的分离度
+        peak_count          : int   — Number of detected peaks
+        last_retention_time : float — Retention time of last peak
+        min_resolution      : float — Minimum resolution among adjacent peaks
     """
 
-    # ── 1. 加载数据 ──────────────────────────────────────────────────
+    # ── 1. Load data ────────────────────────────────────────────────────
     df = pd.read_csv(csv_file)
     time_col   = df.columns[0]
     signal_col = df.columns[1]
-    print(f"自动识别列名: 时间列='{time_col}', 信号列='{signal_col}'")
+    print(f"Auto-detected column names: time_col='{time_col}', signal_col='{signal_col}'")
 
     chrom = Chromatogram(df, cols={'time': time_col, 'signal': signal_col})
 
-    # ── 2. 基线校正与峰拟合 ──────────────────────────────────────────
-    print(f"正在进行基线校正与峰拟合 (prominence = {prominence_threshold})...")
+    # ── 2. Baseline correction and peak fitting ─────────────────────────
+    print(f"Performing baseline correction and peak fitting (prominence = {prominence_threshold})...")
     peaks_df = chrom.fit_peaks(prominence=prominence_threshold)
 
-    # ── 3. 基础峰参数 ────────────────────────────────────────────────
+    # ── 3. Basic peak parameters ────────────────────────────────────────
     peak_count      = len(peaks_df)
     retention_times = peaks_df['retention_time'].values
     widths          = 4 * peaks_df['scale'].values  # W ≈ 4σ
 
     last_rt = float(retention_times[-1]) if peak_count > 0 else float('nan')
 
-    # ── 4. 计算分离度（每个峰与下一个峰之间，挂在前一个峰后面）───────
-    #   resolution[i] = Rs between peak i and peak i+1，存在峰 i 行
-    #   最后一个峰无后继峰，填 NaN
+    # ── 4. Calculate resolution (between each peak and next peak)────────
+    #   resolution[i] = Rs between peak i and peak i+1, stored in peak i row
+    #   Last peak has no successor, filled with NaN
     resolution_values = []
     print("\n" + "=" * 45)
-    print(f"  积分分析报告 (共检测到 {peak_count} 个色谱峰)")
+    print(f"  Integration Analysis Report (Total {peak_count} peaks detected)")
     print("=" * 45)
 
     for i in range(peak_count):
@@ -64,28 +64,28 @@ def analyze_chromatogram(
             w1,  w2  = widths[i],          widths[i + 1]
             rs = 2 * (rt2 - rt1) / (w1 + w2)
             resolution_values.append(round(float(rs), 4))
-            status = "完全分离" if rs >= 1.5 else "未完全分离"
+            status = "Fully Resolved" if rs >= 1.5 else "Partially Resolved"
             print(
-                f"峰 {i+1}: RT = {retention_times[i]:.3f} min | "
-                f"面积 = {area:.2f} | 峰高 = {height:.2f} | "
-                f"Rs(峰{i+1}→峰{i+2}) = {rs:.3f} ({status})"
+                f"Peak {i+1}: RT = {retention_times[i]:.3f} min | "
+                f"Area = {area:.2f} | Height = {height:.2f} | "
+                f"Rs(Peak{i+1}→Peak{i+2}) = {rs:.3f} ({status})"
             )
         else:
             resolution_values.append(float('nan'))
             print(
-                f"峰 {i+1}: RT = {retention_times[i]:.3f} min | "
-                f"面积 = {area:.2f} | 峰高 = {height:.2f} | "
-                f"Rs = —（最后一个峰）"
+                f"Peak {i+1}: RT = {retention_times[i]:.3f} min | "
+                f"Area = {area:.2f} | Height = {height:.2f} | "
+                f"Rs = —(Last peak)"
             )
 
     print("=" * 45)
 
-    # ── 5. 最小分离度（忽略 NaN）────────────────────────────────────
+    # ── 5. Minimum resolution (ignoring NaN) ────────────────────────────
     valid_rs = [r for r in resolution_values if not np.isnan(r)]
     min_resolution = float(min(valid_rs)) if valid_rs else 0.0
-    print(f"\n最小分离度 Rs_min = {min_resolution:.3f}")
+    print(f"\nMinimum resolution Rs_min = {min_resolution:.3f}")
 
-    # ── 6. 导出 CSV ──────────────────────────────────────────────────
+    # ── 6. Export CSV ───────────────────────────────────────────────────
     summary_df = pd.DataFrame({
         'peak_index'      : range(1, peak_count + 1),
         'retention_time'  : retention_times,
@@ -94,9 +94,9 @@ def analyze_chromatogram(
         'resolution' : resolution_values,
     })
     summary_df.to_csv(output_csv, index=False)
-    print(f"峰摘要已保存至: {output_csv}")
+    print(f"Peak summary saved to: {output_csv}")
 
-    # ── 7. 返回结果 ──────────────────────────────────────────────────
+    # ── 7. Return results ───────────────────────────────────────────────
     return {
         'peak_count'          : peak_count,
         'last_retention_time' : last_rt,
@@ -104,7 +104,7 @@ def analyze_chromatogram(
     }
 
 
-# ── 调用示例 ──────────────────────────────────────────────────────────
+# ── Usage example ────────────────────────────────────────────────────────
 if __name__ == "__main__":
     result = analyze_chromatogram(
     csv_file             = 'phenyl_LHS5.csv',
@@ -113,7 +113,7 @@ if __name__ == "__main__":
 )
 
 
-    print("\n── 返回值摘要 ──")
-    print(f"峰数量             : {result['peak_count']}")
-    print(f"最后一个峰保留时间 : {result['last_retention_time']:.3f} min")
-    print(f"最小分离度         : {result['min_resolution']:.3f}")
+    print("\n── Return value summary ──")
+    print(f"Peak count             : {result['peak_count']}")
+    print(f"Last peak retention time : {result['last_retention_time']:.3f} min")
+    print(f"Minimum resolution      : {result['min_resolution']:.3f}")

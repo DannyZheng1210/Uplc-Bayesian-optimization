@@ -10,12 +10,12 @@ from objectives_extract import analyze_chromatogram
 from BOcode import run_bo_suggest
 
 # ======================================================================
-# 项目名称配置（修改这里来创建新项目）
+# Project Name Configuration (modify here to create new project)
 # ======================================================================
-PROJECT_NAME = "test_001"  # 修改此处为你的项目名称
+PROJECT_NAME = "test_001"  # Modify here for your project name
 
 # ======================================================================
-# 日志配置
+# Logging Configuration
 # ======================================================================
 
 logging.basicConfig(
@@ -30,48 +30,48 @@ logger = logging.getLogger(__name__)
 
 
 # ======================================================================
-# 全局配置参数（根据实验需要修改这里）
+# Global Configuration Parameters (modify here according to experiment needs)
 # ======================================================================
 
-# ── 实验变量 ───────────────────────────────────────────────────────────
+# ── Experiment Variables ───────────────────────────────────────────────
 VARIABLE_NAMES = ["organic_concentration", "isocratic_time", "gradient_time"]
 LOWER_BOUNDS   = [5,  0, 0]
 UPPER_BOUNDS   = [60, 1, 3]
 
-# ── 实验轮次 ───────────────────────────────────────────────────────────
-N_INITIAL       = 2     # LHS 初始实验数量
-N_BO_ITERATIONS = 2    # 贝叶斯优化迭代次数
+# ── Experiment Iterations ───────────────────────────────────────────────
+N_INITIAL       = 2     # Number of initial LHS experiments
+N_BO_ITERATIONS = 2    # Number of Bayesian optimization iterations
 
-# ── UPLC 硬件参数 ──────────────────────────────────────────────────────
+# ── UPLC Hardware Parameters ────────────────────────────────────────────
 SAMPLE_LOCATION = "2:48"
 WAVELENGTH      = 254
 
-# ── 文件夹路径（按实际情况修改）───────────────────────────────────────
-CONF_OUTPUT_DIR  = r"D:\automation_test.PRO\ACQUDB"              # UPLC 4个配置文件输出目录
-CSV_CONTROL_DIR  = r"D:\autolynx"              # 控制 CSV 生成目录
-PROCESSED_DIR    = r"D:\autolynx\Processed"    # UPLC 完成标志目录
-RAW_DATA_DIR     = r"D:\automation_test.PRO\Data"      # UPLC raw 数据文件目录
-CHROM_CSV_DIR    = f"./{PROJECT_NAME}_chromatogram_data"     # 色谱 CSV 输出目录
-PEAKS_CSV_DIR    = f"./{PROJECT_NAME}_peaks_analysis"        # 峰分析 CSV 输出目录
+# ── Folder Paths (modify according to actual situation) ─────────────────
+CONF_OUTPUT_DIR  = r"D:\automation_test.PRO\ACQUDB"              # UPLC configuration files output directory
+CSV_CONTROL_DIR  = r"D:\autolynx"              # CSV control generation directory
+PROCESSED_DIR    = r"D:\autolynx\Processed"    # UPLC completion flag directory
+RAW_DATA_DIR     = r"D:\automation_test.PRO\Data"      # UPLC raw data file directory
+CHROM_CSV_DIR    = f"./{PROJECT_NAME}_chromatogram_data"     # Chromatogram CSV output directory
+PEAKS_CSV_DIR    = f"./{PROJECT_NAME}_peaks_analysis"        # Peak analysis CSV output directory
 
-# ── 总实验记录表 ───────────────────────────────────────────────────────
+# ── Master Experiment Record Table ───────────────────────────────────────
 MASTER_CSV = f"{PROJECT_NAME}_experiment_master.csv"
 
-# ── 色谱分析参数 ───────────────────────────────────────────────────────
+# ── Chromatogram Analysis Parameters ────────────────────────────────────
 PROMINENCE_THRESHOLD = 0.01
 
-# ── 延时参数 ───────────────────────────────────────────────────────────
-POLL_INTERVAL        = 30   # UPLC 轮询间隔（秒）
-UPLC_DONE_DELAY      = 5    # UPLC 完成后等待文件写稳定（秒）
-RAW_READ_DELAY       = 3    # raw 文件读取前延时（秒）
+# ── Delay Parameters ────────────────────────────────────────────────────
+POLL_INTERVAL        = 15   # UPLC polling interval (seconds)
+UPLC_DONE_DELAY      = 5    # Wait time after UPLC completion for file stability (seconds)
+RAW_READ_DELAY       = 3    # Delay before reading raw file (seconds)
 
 
 # ======================================================================
-# 工具函数
+# Utility Functions
 # ======================================================================
 
 def init_master_csv(master_csv: str) -> pd.DataFrame:
-    """初始化总实验记录 CSV。"""
+    """Initialize the master experiment record CSV."""
     cols = [
         'iteration', 'algorithm',
         'organic_concentration', 'isocratic_time', 'gradient_time',
@@ -80,39 +80,39 @@ def init_master_csv(master_csv: str) -> pd.DataFrame:
     if not os.path.exists(master_csv):
         df = pd.DataFrame(columns=cols)
         df.to_csv(master_csv, index=False)
-        logger.info(f"[初始化] 创建总实验记录表: {master_csv}")
+        logger.info(f"[Initialize] Create master experiment record: {master_csv}")
     else:
-        logger.info(f"[初始化] 读取已有实验记录表: {master_csv}")
+        logger.info(f"[Initialize] Load existing experiment record: {master_csv}")
     return pd.read_csv(master_csv)
 
 
 def init_output_dirs():
-    """初始化输出文件夹。"""
+    """Initialize output directories."""
     for dir_path in [CHROM_CSV_DIR, PEAKS_CSV_DIR]:
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
-            logger.info(f"[初始化] 创建输出文件夹: {dir_path}")
+            logger.info(f"[Initialize] Create output directory: {dir_path}")
         else:
-            logger.info(f"[初始化] 文件夹已存在: {dir_path}")
+            logger.info(f"[Initialize] Directory already exists: {dir_path}")
 
 
 def append_variables_to_master(master_csv: str, row: dict):
-    """写入 variables，objectives 列留空。"""
+    """Write variables to master CSV, leave objectives columns empty."""
     df = pd.read_csv(master_csv)
     df = pd.concat([df, pd.DataFrame([row])], ignore_index=True)
     df.to_csv(master_csv, index=False)
-    logger.info(f"[记录] Variables 已写入: iteration={row['iteration']}")
+    logger.info(f"[Record] Variables written: iteration={row['iteration']}")
 
 
 def update_objectives_in_master(master_csv: str, iteration: int, result: dict):
-    """根据 iteration 找到对应行，补全 objectives。"""
+    """Find row by iteration and complete objectives columns."""
     df  = pd.read_csv(master_csv)
     idx = df[df['iteration'] == iteration].index
     df.loc[idx, 'number_of_peak']      = result['peak_count']
     df.loc[idx, 'critical_resolution'] = result['min_resolution']
     df.loc[idx, 'last_peak_elutes']    = result['last_retention_time']
     df.to_csv(master_csv, index=False)
-    logger.info(f"[记录] Objectives 已补全: iteration={iteration} | "
+    logger.info(f"[Record] Objectives completed: iteration={iteration} | "
                 f"peaks={result['peak_count']}  "
                 f"resolution={result['min_resolution']}  "
                 f"last_rt={result['last_retention_time']}")
@@ -120,14 +120,14 @@ def update_objectives_in_master(master_csv: str, iteration: int, result: dict):
 
 def get_valid_master_csv(master_csv: str) -> str:
     """
-    过滤掉 objectives 为空的行，返回临时 CSV 路径供 BO 使用。
-    避免 None 行导致 BO 算法报错。
+    Filter out rows with empty objectives and return temporary CSV path for BO.
+    Avoid None rows causing BO algorithm errors.
     """
     df       = pd.read_csv(master_csv)
     df_valid = df.dropna(subset=['number_of_peak', 'critical_resolution', 'last_peak_elutes'])
     tmp_path = f"{PROJECT_NAME}_bo_input_tmp.csv"
     df_valid.to_csv(tmp_path, index=False)
-    logger.info(f"[BO] 有效实验数: {len(df_valid)}/{len(df)}")
+    logger.info(f"[BO] Valid experiments: {len(df_valid)}/{len(df)}")
     return tmp_path
 
 
@@ -138,17 +138,17 @@ def wait_for_uplc(
     done_delay      : int = 5,
 ) -> None:
     """
-    轮询等待 UPLC 完成。
-    检测到完成标志文件后，额外等待 done_delay 秒确保文件写稳定。
+    Poll and wait for UPLC completion.
+    After detecting the completion flag file, wait additional done_delay seconds to ensure file stability.
     """
     processed_csv = os.path.join(processed_dir, f"{conf_files_name}.csv")
-    logger.info(f"[等待] 监控 UPLC 完成，目标: {processed_csv}")
+    logger.info(f"[Wait] Monitoring UPLC completion, target: {processed_csv}")
     while not os.path.exists(processed_csv):
-        logger.info(f"  ... 未检测到，{poll_interval}s 后重试")
+        logger.info(f"  ... Not detected, retry after {poll_interval}s")
         time.sleep(poll_interval)
-    logger.info(f"[完成] 检测到完成标志，等待 {done_delay}s 确保文件写稳定...")
+    logger.info(f"[Done] Completion flag detected, waiting {done_delay}s to ensure file stability...")
     time.sleep(done_delay)
-    logger.info(f"[完成] UPLC 运行结束: {conf_files_name}")
+    logger.info(f"[Done] UPLC run completed: {conf_files_name}")
 
 
 def run_uplc_and_get_objectives(
@@ -157,8 +157,8 @@ def run_uplc_and_get_objectives(
     master_csv     : str,
 ) -> dict | None:
     """
-    等待 UPLC 完成 → raw 转色谱 CSV → 分析 → 补全 objectives。
-    分析失败时记录错误日志，objectives 保持 None，不中断主流程。
+    Wait for UPLC completion → convert raw to chromatogram CSV → analyze → complete objectives.
+    On analysis failure, log error and keep objectives as None, do not interrupt main workflow.
     """
     wait_for_uplc(
         processed_dir   = PROCESSED_DIR,
@@ -168,18 +168,18 @@ def run_uplc_and_get_objectives(
     )
 
     try:
-        # ── raw 文件存在性检查 ─────────────────────────────────────
+        # ── Check raw file existence ────────────────────────────────
         raw_file = os.path.join(RAW_DATA_DIR, f"{conf_files_name}.raw")
         if not os.path.exists(raw_file):
-            raise FileNotFoundError(f"raw 文件不存在: {raw_file}")
+            raise FileNotFoundError(f"Raw file does not exist: {raw_file}")
 
-        # ── raw 转色谱 CSV ─────────────────────────────────────────
-        logger.info(f"[分析] 等待 {RAW_READ_DELAY}s 后读取 raw 文件...")
+        # ── Convert raw to chromatogram CSV ─────────────────────────
+        logger.info(f"[Analysis] Waiting {RAW_READ_DELAY}s before reading raw file...")
         time.sleep(RAW_READ_DELAY)
         chrom_csv = read_chromatogram(raw_file, chromatogram_csv=CHROM_CSV_DIR, wavelength=WAVELENGTH)
-        logger.info(f"[分析] 色谱 CSV 已生成: {chrom_csv}")
+        logger.info(f"[Analysis] Chromatogram CSV generated: {chrom_csv}")
 
-        # ── 分析色谱图提取 objectives ──────────────────────────────
+        # ── Analyze chromatogram and extract objectives ──────────────
         peaks_csv = os.path.join(PEAKS_CSV_DIR, f"{conf_files_name}_peaks.csv")
         result    = analyze_chromatogram(
             csv_file             = chrom_csv,
@@ -187,18 +187,18 @@ def run_uplc_and_get_objectives(
             output_csv           = peaks_csv,
         )
 
-        # ── 补全 objectives ────────────────────────────────────────
+        # ── Complete objectives ────────────────────────────────────
         update_objectives_in_master(master_csv, iteration, result)
         return result
 
     except Exception as e:
-        logger.error(f"[错误] iteration={iteration} ({conf_files_name}) 分析失败: {e}")
-        logger.warning(f"[警告] iteration={iteration} objectives 保持 None，继续下一个实验")
+        logger.error(f"[Error] iteration={iteration} ({conf_files_name}) analysis failed: {e}")
+        logger.warning(f"[Warning] iteration={iteration} objectives remain None, continue to next experiment")
         return None
 
 
 # ======================================================================
-# 主流程
+# Main Workflow
 # ======================================================================
 
 def run_closed_loop():
@@ -207,10 +207,10 @@ def run_closed_loop():
     init_master_csv(MASTER_CSV)
 
     # ══════════════════════════════════════════════════════════════
-    # 阶段一：LHS 初始实验
+    # Phase 1: LHS Initial Experiments
     # ══════════════════════════════════════════════════════════════
     logger.info("\n" + "█"*60)
-    logger.info("  阶段一：LHS 初始实验")
+    logger.info("  Phase 1: LHS Initial Experiments")
     logger.info("█"*60)
 
     lhs_df = LHS_initial_experiments(
@@ -220,8 +220,8 @@ def run_closed_loop():
         upper_bounds   = UPPER_BOUNDS,
     )
 
-    # ── LHS 所有 variables 一次性全部写入 ─────────────────────────
-    logger.info("[LHS] 一次性写入全部 variables...")
+    # ── Write all LHS variables at once ────────────────────────────
+    logger.info("[LHS] Write all variables at once...")
     for i, row in enumerate(lhs_df.itertuples(index=False), start=1):
         var_row = {
             'iteration'            : i,
@@ -235,19 +235,19 @@ def run_closed_loop():
         }
         append_variables_to_master(MASTER_CSV, var_row)
 
-    # ── 逐个提交 UPLC 并补全 objectives ───────────────────────────
-    logger.info("[LHS] 开始逐个运行实验...")
+    # ── Submit to UPLC one by one and complete objectives ─────────
+    logger.info("[LHS] Starting experiments one by one...")
     for i, row in enumerate(lhs_df.itertuples(index=False), start=1):
         conf_name = f"LHS{i}"
 
         logger.info("="*60)
-        logger.info(f"  LHS 实验 {i}/{N_INITIAL} | {conf_name}")
+        logger.info(f"  LHS Experiment {i}/{N_INITIAL} | {conf_name}")
         logger.info(f"  organic={row.organic_concentration:.2f}%  "
                     f"iso_time={row.isocratic_time:.2f}min  "
                     f"grad_time={row.gradient_time:.2f}min")
         logger.info("="*60)
 
-        # 生成配置文件并提交 UPLC
+        # Generate configuration files and submit to UPLC
         generate_all_confs(
             isocratic_time  = row.isocratic_time,
             gradient_time   = row.gradient_time,
@@ -262,7 +262,7 @@ def run_closed_loop():
             output_dir      = CSV_CONTROL_DIR,
         )
 
-        # 等待完成并补全 objectives
+        # Wait for completion and complete objectives
         run_uplc_and_get_objectives(
             iteration       = i,
             conf_files_name = conf_name,
@@ -270,10 +270,10 @@ def run_closed_loop():
         )
 
     # ══════════════════════════════════════════════════════════════
-    # 阶段二：贝叶斯优化迭代
+    # Phase 2: Bayesian Optimization Iterations
     # ══════════════════════════════════════════════════════════════
     logger.info("\n" + "█"*60)
-    logger.info("  阶段二：贝叶斯优化迭代")
+    logger.info("  Phase 2: Bayesian Optimization Iterations")
     logger.info("█"*60)
 
     for bo_iter in range(1, N_BO_ITERATIONS + 1):
@@ -281,11 +281,11 @@ def run_closed_loop():
         conf_name = f"BO{bo_iter}"
 
         logger.info("="*60)
-        logger.info(f"  BO 第 {bo_iter}/{N_BO_ITERATIONS} 轮 | {conf_name}")
+        logger.info(f"  BO Iteration {bo_iter}/{N_BO_ITERATIONS} | {conf_name}")
         logger.info("="*60)
 
-        # ── BO 推荐参数 ────────────────────────────────────────────
-        logger.info("[BO] 正在推荐实验条件...")
+        # ── BO recommends parameters ────────────────────────────────
+        logger.info("[BO] Recommending experiment conditions...")
         try:
             suggested = run_bo_suggest(
                 csv_file        = get_valid_master_csv(MASTER_CSV),
@@ -295,16 +295,16 @@ def run_closed_loop():
             org_conc  = float(suggested['organic_concentration'].iloc[0])
             iso_time  = float(suggested['isocratic_time'].iloc[0])
             grad_time = float(suggested['gradient_time'].iloc[0])
-            logger.info(f"[BO 推荐] organic={org_conc:.2f}  "
+            logger.info(f"[BO Recommended] organic={org_conc:.2f}  "
                         f"iso={iso_time:.2f}  "
                         f"grad={grad_time:.2f}")
 
         except Exception as e:
-            logger.error(f"[错误] BO 第 {bo_iter} 轮推荐失败: {e}")
-            logger.warning(f"[警告] 跳过 BO 第 {bo_iter} 轮，继续下一轮")
+            logger.error(f"[Error] BO iteration {bo_iter} recommendation failed: {e}")
+            logger.warning(f"[Warning] Skip BO iteration {bo_iter}, continue next")
             continue
 
-        # ── 写入 variables ─────────────────────────────────────────
+        # ── Write variables ────────────────────────────────────────
         var_row = {
             'iteration'            : iteration,
             'algorithm'            : conf_name,
@@ -317,7 +317,7 @@ def run_closed_loop():
         }
         append_variables_to_master(MASTER_CSV, var_row)
 
-        # ── 生成配置文件并提交 UPLC ────────────────────────────────
+        # ── Generate configuration files and submit to UPLC ────────
         generate_all_confs(
             isocratic_time  = iso_time,
             gradient_time   = grad_time,
@@ -332,17 +332,17 @@ def run_closed_loop():
             output_dir      = CSV_CONTROL_DIR,
         )
 
-        # ── 等待完成并补全 objectives ──────────────────────────────
+        # ── Wait for completion and complete objectives ───────────
         run_uplc_and_get_objectives(
             iteration       = iteration,
             conf_files_name = conf_name,
             master_csv      = MASTER_CSV,
         )
 
-    # ── 最终输出 ───────────────────────────────────────────────────
+    # ── Final output ──────────────────────────────────────────────
     logger.info("\n" + "█"*60)
-    logger.info("  Close-loop 优化全部完成！")
-    logger.info(f"  完整实验记录: {MASTER_CSV}")
+    logger.info("  Close-loop optimization completed!")
+    logger.info(f"  Complete experiment record: {MASTER_CSV}")
     logger.info("█"*60)
 
     final_df = pd.read_csv(MASTER_CSV)
@@ -350,7 +350,7 @@ def run_closed_loop():
 
 
 # ======================================================================
-# 入口
+# Entry Point
 # ======================================================================
 if __name__ == "__main__":
     run_closed_loop()
