@@ -22,7 +22,7 @@ logging.basicConfig(
     level    = logging.INFO,
     format   = "%(asctime)s [%(levelname)s] %(message)s",
     handlers = [
-        logging.FileHandler(f"{PROJECT_NAME}_experiment.log", encoding="utf-8"),
+        logging.FileHandler(f"{PROJECT_NAME}/{PROJECT_NAME}_experiment.log", encoding="utf-8"),
         logging.StreamHandler()
     ]
 )
@@ -51,11 +51,13 @@ CONF_OUTPUT_DIR  = r"D:\automation_test.PRO\ACQUDB"              # UPLC configur
 CSV_CONTROL_DIR  = r"D:\autolynx"              # CSV control generation directory
 PROCESSED_DIR    = r"D:\autolynx\Processed"    # UPLC completion flag directory
 RAW_DATA_DIR     = r"D:\automation_test.PRO\Data"      # UPLC raw data file directory
-CHROM_CSV_DIR    = f"./{PROJECT_NAME}_chromatogram_data"     # Chromatogram CSV output directory
-PEAKS_CSV_DIR    = f"./{PROJECT_NAME}_peaks_analysis"        # Peak analysis CSV output directory
+CHROM_CSV_DIR    = f"./{PROJECT_NAME}/{PROJECT_NAME}_chromatogram_data"     # Chromatogram CSV output directory
+PEAKS_CSV_DIR    = f"./{PROJECT_NAME}/{PROJECT_NAME}_peaks_analysis"        # Peak analysis CSV output directory
+CHROM_PLOT_DIR   = f"./{PROJECT_NAME}/{PROJECT_NAME}_chromatogram_plots"   # Chromatogram plot output directory
+BO_OUTPUT_DIR    = f"./{PROJECT_NAME}/BO_temp"                              # BO temporary and recommendation files directory
 
 # ── Master Experiment Record Table ───────────────────────────────────────
-MASTER_CSV = f"{PROJECT_NAME}_experiment_master.csv"
+MASTER_CSV = f"{PROJECT_NAME}/{PROJECT_NAME}_experiment_master.csv"
 
 # ── Chromatogram Analysis Parameters ────────────────────────────────────
 PROMINENCE_THRESHOLD = 0.01
@@ -88,7 +90,16 @@ def init_master_csv(master_csv: str) -> pd.DataFrame:
 
 def init_output_dirs():
     """Initialize output directories."""
-    for dir_path in [CHROM_CSV_DIR, PEAKS_CSV_DIR]:
+    # Create project root directory
+    project_root = f"./{PROJECT_NAME}"
+    if not os.path.exists(project_root):
+        os.makedirs(project_root)
+        logger.info(f"[Initialize] Create project directory: {project_root}")
+    else:
+        logger.info(f"[Initialize] Project directory already exists: {project_root}")
+    
+    # Create subdirectories
+    for dir_path in [CHROM_CSV_DIR, PEAKS_CSV_DIR, CHROM_PLOT_DIR, BO_OUTPUT_DIR]:
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
             logger.info(f"[Initialize] Create output directory: {dir_path}")
@@ -125,7 +136,7 @@ def get_valid_master_csv(master_csv: str) -> str:
     """
     df       = pd.read_csv(master_csv)
     df_valid = df.dropna(subset=['number_of_peak', 'critical_resolution', 'last_peak_elutes'])
-    tmp_path = f"{PROJECT_NAME}_bo_input_tmp.csv"
+    tmp_path = f"{BO_OUTPUT_DIR}/{PROJECT_NAME}_bo_input_tmp.csv"
     df_valid.to_csv(tmp_path, index=False)
     logger.info(f"[BO] Valid experiments: {len(df_valid)}/{len(df)}")
     return tmp_path
@@ -181,10 +192,12 @@ def run_uplc_and_get_objectives(
 
         # ── Analyze chromatogram and extract objectives ──────────────
         peaks_csv = os.path.join(PEAKS_CSV_DIR, f"{conf_files_name}_peaks.csv")
+        plot_path = os.path.join(CHROM_PLOT_DIR, f"{conf_files_name}.png")
         result    = analyze_chromatogram(
             csv_file             = chrom_csv,
             prominence_threshold = PROMINENCE_THRESHOLD,
             output_csv           = peaks_csv,
+            output_plot          = plot_path,
         )
 
         # ── Complete objectives ────────────────────────────────────
@@ -202,6 +215,10 @@ def run_uplc_and_get_objectives(
 # ======================================================================
 
 def run_closed_loop():
+    # Create project directory first (needed for log file)
+    project_root = f"./{PROJECT_NAME}"
+    if not os.path.exists(project_root):
+        os.makedirs(project_root)
 
     init_output_dirs()
     init_master_csv(MASTER_CSV)
@@ -218,6 +235,7 @@ def run_closed_loop():
         n_initial      = N_INITIAL,
         lower_bounds   = LOWER_BOUNDS,
         upper_bounds   = UPPER_BOUNDS,
+        save_dir       = f"./{PROJECT_NAME}",
     )
 
     # ── Write all LHS variables at once ────────────────────────────
@@ -225,7 +243,7 @@ def run_closed_loop():
     for i, row in enumerate(lhs_df.itertuples(index=False), start=1):
         var_row = {
             'iteration'            : i,
-            'algorithm'            : f"LHS{i}",
+            'algorithm'            : f"{PROJECT_NAME}_LHS{i}",
             'organic_concentration': round(row.organic_concentration, 2),
             'isocratic_time'       : round(row.isocratic_time,        2),
             'gradient_time'        : round(row.gradient_time,         2),
@@ -238,7 +256,7 @@ def run_closed_loop():
     # ── Submit to UPLC one by one and complete objectives ─────────
     logger.info("[LHS] Starting experiments one by one...")
     for i, row in enumerate(lhs_df.itertuples(index=False), start=1):
-        conf_name = f"LHS{i}"
+        conf_name = f"{PROJECT_NAME}_LHS{i}"
 
         logger.info("="*60)
         logger.info(f"  LHS Experiment {i}/{N_INITIAL} | {conf_name}")
@@ -278,7 +296,7 @@ def run_closed_loop():
 
     for bo_iter in range(1, N_BO_ITERATIONS + 1):
         iteration = N_INITIAL + bo_iter
-        conf_name = f"BO{bo_iter}"
+        conf_name = f"{PROJECT_NAME}_BO{bo_iter}"
 
         logger.info("="*60)
         logger.info(f"  BO Iteration {bo_iter}/{N_BO_ITERATIONS} | {conf_name}")
@@ -290,7 +308,7 @@ def run_closed_loop():
             suggested = run_bo_suggest(
                 csv_file        = get_valid_master_csv(MASTER_CSV),
                 num_experiments = 1,
-                output_csv      = f"{PROJECT_NAME}_bo_suggested_{bo_iter}.csv",
+                output_csv      = f"{BO_OUTPUT_DIR}/{PROJECT_NAME}_bo_suggested_{bo_iter}.csv",
             )
             org_conc  = float(suggested['organic_concentration'].iloc[0])
             iso_time  = float(suggested['isocratic_time'].iloc[0])

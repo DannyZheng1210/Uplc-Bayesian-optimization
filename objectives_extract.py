@@ -1,12 +1,14 @@
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 from hplc.quant import Chromatogram
 
 
 def analyze_chromatogram(
     csv_file: str,
     prominence_threshold: float = 0.01,
-    output_csv: str = "peaks_summary.csv"
+    output_csv: str = "peaks_summary.csv",
+    output_plot: str = None
 ) -> dict:
     """
     Analyze chromatogram data, return peak statistics and export peak summary CSV.
@@ -19,6 +21,8 @@ def analyze_chromatogram(
         Normalized peak height threshold, default 0.01.
     output_csv : str
         Output peak summary CSV filename, default 'peaks_summary.csv'.
+    output_plot : str, optional
+        Output chromatogram plot image path (.png). If None, no plot will be saved.
 
     Returns
     -------
@@ -96,7 +100,21 @@ def analyze_chromatogram(
     summary_df.to_csv(output_csv, index=False)
     print(f"Peak summary saved to: {output_csv}")
 
-    # ── 7. Return results ───────────────────────────────────────────────
+    # ── 7. Plot and save chromatogram ────────────────────────────────────
+    if output_plot is not None:
+        try:
+            # Use hplc-py library's show() method to generate the plot with fitted peaks
+            fig, ax = chrom.show()
+            fig.suptitle(f'Chromatogram Analysis (Total Peaks: {peak_count})', fontsize=13, fontweight='bold')
+            
+            plt.tight_layout()
+            plt.savefig(output_plot, dpi=300, bbox_inches='tight')
+            plt.close()
+            print(f"Chromatogram plot saved to: {output_plot}")
+        except Exception as e:
+            print(f"Warning: Failed to save chromatogram plot: {e}")
+
+    # ── 8. Return results ───────────────────────────────────────────────
     return {
         'peak_count'          : peak_count,
         'last_retention_time' : last_rt,
@@ -109,6 +127,9 @@ if __name__ == "__main__":
     result = analyze_chromatogram(
     csv_file             = 'phenyl_LHS5.csv',
     prominence_threshold = 0.01,
+    output_csv           = 'peaks_summary.csv',
+    output_plot          = 'chromatogram_plot.png',
+)
     output_csv           = 'peaks_summary.csv',
 )
 
